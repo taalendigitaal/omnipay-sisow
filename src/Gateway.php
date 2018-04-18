@@ -27,7 +27,7 @@ class Gateway extends AbstractGateway
             'merchantId' => '',
         );
     }
-    
+
     public function getMerchantKey()
     {
         return $this->getParameter('merchantKey');
@@ -69,7 +69,7 @@ class Gateway extends AbstractGateway
     {
         return $this->createRequest('\Omnipay\Sisow\Message\FetchIssuersRequest', $parameters);
     }
-    
+
     /**
      * Retrieve the payment methods.
      *
@@ -105,4 +105,31 @@ class Gateway extends AbstractGateway
     {
         return $this->createRequest('\Omnipay\Sisow\Message\CompletePurchaseRequest', $parameters);
     }
+
+    public function authorize(array $parameters = array())
+    {
+        return $this->purchase($parameters);
+    }
+
+    public function completeAuthorize(array $parameters = array())
+    {
+        return $this->completePurchase($parameters);
+    }
+
+    public function capture(array $parameters = array())
+    {
+        return $this->createRequest('\Omnipay\Sisow\Message\InvoiceRequest', $parameters);
+    }
+
+    public function refund(array $parameters = array())
+    {
+        // @todo should be a RefundRequest when not focum/klarna/afterpay
+        return $this->createRequest('\Omnipay\Sisow\Message\CreditInvoiceRequest', $parameters);
+    }
+
+    public function void(array $parameters = array())
+    {
+        return $this->createRequest('\Omnipay\Sisow\Message\CancelReservationRequest', $parameters);
+    }
+
 }
