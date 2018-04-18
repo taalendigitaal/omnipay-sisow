@@ -9,6 +9,7 @@ use Omnipay\Common\Exception\InvalidRequestException;
  */
 class PurchaseRequest extends AbstractRequest
 {
+
     protected $endpoint = 'https://www.sisow.nl/Sisow/iDeal/RestHandler.ashx/TransactionRequest';
 
     public function getDays()
@@ -41,24 +42,34 @@ class PurchaseRequest extends AbstractRequest
         return $this->setParameter('entranceCode', $value);
     }
 
-    public function getMakeInvoice()
+    public function getBic()
     {
-        return $this->getParameter('makeInvoice');
+        return $this->getParameter('bic');
     }
 
-    public function setMakeInvoice($value)
+    public function setBic($value)
     {
-        return $this->setParameter('makeInvoice', $value);
+        return $this->setParameter('bic', $value);
     }
 
-    public function getMailInvoice()
+    public function getIban()
     {
-        return $this->getParameter('mailInvoice');
+        return $this->getParameter('iban');
     }
 
-    public function setMailInvoice($value)
+    public function setIban($value)
     {
-        return $this->setParameter('mailInvoice', $value);
+        return $this->setParameter('iban', $value);
+    }
+
+    public function getCoc()
+    {
+        return $this->getParameter('coc');
+    }
+
+    public function setCoc($value)
+    {
+        return $this->setParameter('coc', $value);
     }
 
     public function getBillingCountrycode()
@@ -108,68 +119,83 @@ class PurchaseRequest extends AbstractRequest
             throw new InvalidRequestException("The issuer can only be '99' in testMode!");
         }
 
-        $data = array(
+        $data = [
             'shopid' => $this->getShopId(),
             'merchantid' => $this->getMerchantId(),
             'merchantkey' => $this->getMerchantKey(),
             'payment' => $this->getPaymentMethod(),
             'purchaseid' => $this->getTransactionId(),
+            'currency' => $this->getCurrency(),
             'amount' => $this->getAmountInteger(),
-            'issuerid' => $this->getIssuer(),
             'entrancecode' => $this->getEntranceCode(),
             'description' => $this->getDescription(),
-            'including' => $this->getIncluding(),
-            'days' => $this->getDays(),
             'returnurl' => $this->getReturnUrl(),
             'cancelurl' => $this->getCancelUrl(),
             'notifyurl' => $this->getNotifyUrl(),
             'sha1' => $this->generateSignature(),
             'testmode' => $this->getTestMode(),
-        );
+        ];
+
+        if (in_array($this->getPaymentMethod(), ['ideal', '', null])) {
+            $data['issuerid'] = $this->getIssuer();
+        }
+
+        if (in_array($this->getPaymentMethod(), ['overboeking', 'ebill'])) {
+            $data['including'] = $this->getIncluding();
+            $data['days'] = $this->getDays();
+        }
+
+        if (in_array($this->getPaymentMethod(), ['giropay', 'eps'])) {
+            $data['bic'] = $this->getBic();
+        }
+
+        if (in_array($this->getPaymentMethod(), ['focum'])) {
+            $data['iban'] = $this->getIban();
+        }
+
+        if (in_array($this->getPaymentMethod(), ['focum', 'klarna', 'afterpay', 'capayable'])) {
+            $data['ipaddress'] = $this->getClientIp();
+        }
 
         /** @var \Omnipay\Common\CreditCard $card */
         $card = $this->getCard();
         if ($card) {
-            if ($this->getPaymentMethod() == 'overboeking' || $this->getPaymentMethod() == 'klarna') {
+            if (in_array($this->getPaymentMethod(), ['overboeking', 'ebill', 'focum', 'klarna', 'afterpay', 'capayable'])) {
                 $data['billing_mail'] = $card->getEmail();
                 $data['billing_firstname'] = $card->getBillingFirstName();
                 $data['billing_lastname'] = $card->getBillingLastName();
+                $data['billing_countrycode'] = $this->getBillingCountrycode();
             }
 
-            if ($this->getPaymentMethod() == 'klarna') {
+            if (in_array($this->getPaymentMethod(), ['focum', 'klarna', 'afterpay', 'capayable'])) {
                 $data['billing_company'] = $card->getBillingCompany();
+                if ($this->getCoc()) {
+                    $data['billing_coc'] = $this->getCoc();
+                }
                 $data['billing_address1'] = $card->getBillingAddress1();
                 $data['billing_address2'] = $card->getBillingAddress2();
                 $data['billing_zip'] = $card->getBillingPostcode();
                 $data['billing_city'] = $card->getBillingCity();
                 $data['billing_country'] = $card->getBillingCountry();
                 $data['billing_phone'] = $card->getBillingPhone();
-                $data['birthdate'] = date('dmY', strtotime($card->getBirthday()));
-                if ($this->getMakeInvoice()) {
-                    $data['makeinvoice'] = $this->getMakeInvoice();
-                }
-                if ($this->getMailInvoice()) {
-                    $data['mailinvoice'] = $this->getMailInvoice();
-                }
-                $data['billing_countrycode'] = $this->getBillingCountrycode();
-                $data['shipping_countrycode'] = $this->getShippingCountrycode();
 
-                // only used for klarna account (required for klarna invoice as -1)
-                $data['pclass'] = - 1;
+                $data['birthdate'] = $card->getBirthday() ? date('dmY', strtotime($card->getBirthday())) : null;
+                $data['gender'] = in_array(substr($card->getGender(), 0, 1), ['f', 'm']) ? substr($card->getGender(), 0, 1) : null;
+
+                $data['shipping_mail'] = $card->getEmail();
+                $data['shipping_firstname'] = $card->getShippingFirstName();
+                $data['shipping_lastname'] = $card->getShippingLastName();
+                $data['shipping_company'] = $card->getShippingCompany();
+                $data['shipping_address1'] = $card->getShippingAddress1();
+                $data['shipping_address2'] = $card->getShippingAddress2();
+                $data['shipping_zip'] = $card->getShippingPostcode();
+                $data['shipping_city'] = $card->getShippingCity();
+                $data['shipping_country'] = $card->getShippingCountry();
+                $data['shipping_countrycode'] = $this->getShippingCountrycode();
+                $data['shipping_phone'] = $card->getShippingPhone();
 
                 $data = array_merge($data, $this->getItemData());
             }
-
-            $data['shipping_mail'] = $card->getEmail();
-            $data['shipping_firstname'] = $card->getShippingFirstName();
-            $data['shipping_lastname'] = $card->getShippingLastName();
-            $data['shipping_company'] = $card->getShippingCompany();
-            $data['shipping_address1'] = $card->getShippingAddress1();
-            $data['shipping_address2'] = $card->getShippingAddress2();
-            $data['shipping_zip'] = $card->getShippingPostcode();
-            $data['shipping_city'] = $card->getShippingCity();
-            $data['shipping_country'] = $card->getShippingCountry();
-            $data['shipping_phone'] = $card->getShippingPhone();
         }
 
         return $data;
@@ -212,4 +238,5 @@ class PurchaseRequest extends AbstractRequest
 
         return $this->response = new PurchaseResponse($this, $httpResponse->xml());
     }
+
 }
