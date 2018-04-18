@@ -133,7 +133,7 @@ class PurchaseRequest extends AbstractRequest
             'cancelurl' => $this->getCancelUrl(),
             'notifyurl' => $this->getNotifyUrl(),
             'sha1' => $this->generateSignature(),
-            'testmode' => $this->getTestMode(),
+            'testmode' => $this->getTestMode() ? 'true' : null,
         ];
 
         if (in_array($this->getPaymentMethod(), ['ideal', '', null])) {
