@@ -14,12 +14,29 @@ class InvoiceResponse extends AbstractResponse
 
     public function getInvoiceNumber()
     {
-        return $this->data->invoice->invoiceno;
+        if (isset($this->data->invoice) && isset($this->data->invoice->invoiceno)) {
+            return (string) $this->data->invoice->invoiceno;
+        }
+
+        return null;
     }
 
     public function getDocumentId()
     {
-        return $this->data->invoice->documentid;
+        if (isset($this->data->invoice) && isset($this->data->invoice->documentid)) {
+            return (string) $this->data->invoice->documentid;
+        }
+
+        return null;
+    }
+
+    public function getDocumentUrl()
+    {
+        if (isset($this->data->invoice) && isset($this->data->invoice->documenturl)) {
+            return (string) $this->data->invoice->documenturl;
+        }
+
+        return null;
     }
 
 }

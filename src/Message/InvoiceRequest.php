@@ -54,12 +54,14 @@ class InvoiceRequest extends AbstractRequest
      */
     public function sendData($data)
     {
-        return $this->buildResponse($this->httpClient->request('POST', $this->endpoint, [], http_build_query($data)));
+        $httpResponse = $this->httpClient->post($this->endpoint, null, $data)->send();
+
+        return $this->buildResponse($httpResponse);
     }
 
-    public function buildResponse(Response $response)
+    public function buildResponse(Response $httpResponse)
     {
-        return $this->response = new InvoiceResponse($this, $this->parseXmlResponse($response));
+        return $this->response = new InvoiceResponse($this, $httpResponse->xml());
     }
 
 }
